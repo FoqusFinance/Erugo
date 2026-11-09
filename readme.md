@@ -30,12 +30,24 @@ If you would like to support Erugo's development, please consider donating to th
 
 ## Quick Start
 
-You can use the example docker-compose.yaml below to run Erugo in a container.
+Build the patched image from this checkout before starting Erugo:
+
+```sh
+docker build --pull -f docker/alpine/Dockerfile -t erugo-patched:php8.3.36 .
+docker run --rm --entrypoint php erugo-patched:php8.3.36 -v
+```
+
+The runtime must report PHP 8.3.36 or newer. This fork uses Alpine 3.23 for
+both the Composer stage and the production runtime; the build rejects a runtime
+older than PHP 8.3.36. Rebuild with `--pull --no-cache` to pick up future base-image
+and package security updates. The image tag is a local label, not a version check.
+
+You can use the example docker-compose.yaml below to run the patched image.
 
 ```yaml
 services:
   app:
-    image: wardy784/erugo:latest
+    image: erugo-patched:php8.3.36
     restart: unless-stopped
     volumes:
       - ./erugo-storage:/var/www/html/storage # Use a dedicated folder
@@ -48,6 +60,35 @@ The above docker-compose.yml provides a basic configuration starting point that 
 ```sh
 docker compose up -d
 ``` 
+
+### Updating an existing installation
+
+See the [PHP2Shell remediation guide](https://gist.github.com/lukeoregan88/7a19691c20a6f78f1e0c36589efd1974).
+Restrict public access until the patched runtime is verified. Back up your Compose
+file and storage before updating. Keep all existing storage mounts unchanged; do
+not remove volumes or run `docker compose down -v`.
+
+`docker-compose-prod.yml` now builds the patched image locally. Its existing
+storage path is only an example: use your installation's current storage mount.
+For deployments using that file:
+
+```sh
+cp docker-compose-prod.yml docker-compose-prod.yml.bak
+docker compose -f docker-compose-prod.yml build --pull --no-cache
+docker compose -f docker-compose-prod.yml run --rm --no-deps --entrypoint php app -v
+# Only continue if PHP reports 8.3.36 or newer.
+docker compose -f docker-compose-prod.yml up -d
+docker compose -f docker-compose-prod.yml exec app php -v
+```
+
+For a separate deployment Compose file, change only its image to
+`erugo-patched:php8.3.36` after building the image on that server (or transferring
+it with `docker save` / `docker load`). Updating this checkout does not update an
+already running container.
+
+Before restoring public access, test login, a small upload, share-link creation,
+and downloading. Review proxy/application logs and the host for signs of compromise
+as described in the guide; a patched image does not undo an earlier compromise.
 
 ## Screenshots
 
@@ -198,7 +239,8 @@ npm run dev
 To build the docker image yourself, run the following command.
 
 ```sh
-docker build -t erugo:local -f docker/alpine/Dockerfile .
+docker build --pull -t erugo-patched:php8.3.36 -f docker/alpine/Dockerfile .
+docker run --rm --entrypoint php erugo-patched:php8.3.36 -v
 ```
 If you would like to push the image to Docker Hub, run the following command. You will need to have a Docker Hub account and be logged in.
 ```sh

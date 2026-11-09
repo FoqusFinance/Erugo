@@ -1,5 +1,5 @@
 # Build Stage for PHP dependencies
-FROM php:8.3-cli-alpine AS composer
+FROM php:8.3-cli-alpine3.23 AS composer
 WORKDIR /app
 RUN apk add --no-cache git unzip \
     && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
@@ -16,7 +16,7 @@ RUN npm ci && \
     && rm -rf node_modules
 
 # Final production image
-FROM alpine:3.19
+FROM alpine:3.23
 
 LABEL maintainer="Dean Ward"
 
@@ -35,7 +35,7 @@ ENV SUPERVISOR_CADDY_COMMAND="/usr/sbin/caddy run --config /etc/caddy/Caddyfile"
 ENV SUPERVISOR_PHP_USER="erugo"
 
 # Enable community repository for PHP packages
-RUN echo "http://dl-cdn.alpinelinux.org/alpine/v3.19/community" >> /etc/apk/repositories
+RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.23/community" >> /etc/apk/repositories
 
 # Install production requirements
 RUN apk add --no-cache \
@@ -74,6 +74,7 @@ RUN apk add --no-cache \
     php83-fpm \
     caddy \
     && ln -s /usr/bin/php83 /usr/bin/php \
+    && php -r 'exit(version_compare(PHP_VERSION, "8.3.36", ">=") ? 0 : 1);' \
     && rm -rf /var/cache/apk/*
 
 # Download and install tusd for the correct architecture

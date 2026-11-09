@@ -1,6 +1,9 @@
 services:
   app:
-    image: wardy784/erugo:latest
+    build:
+      context: .
+      dockerfile: docker/alpine/Dockerfile
+    image: erugo-patched:php8.3.36
     restart: unless-stopped
     volumes:
       - /Users/dean/erugo-storage/storage:/var/www/html/storage
